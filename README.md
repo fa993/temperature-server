@@ -16,3 +16,4 @@ Instructions for running:
 5. Run both the folllowing commands in the terminal
 6. Run command "mvn clean install"
 7. Run command "java -jar target/temperature-server-0.0.jar"
+8. Hit website at http://localhost:8080 to see the temperature map
