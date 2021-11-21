@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3D - Polygon with altitude</title>
+<style type="text/css">
+	html,
+	body {
+		margin: 0px;
+		height: 100%;
+		width: 100%
+	}
+
+	.container {
+		width: 100%;
+		height: 100%
+	}
+</style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maptalks/dist/maptalks.css">
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/maptalks/dist/maptalks.min.js"></script>
+
+<body>
+
+	<div id="map" class="container"></div>
+
+	<script>
+
+		cen = [-0.113049, 51.498568];
+		datas = []
+		var spacer = 20;
+		var map;
+		var prop = 5;
+		function initMap() {
+			map = new maptalks.Map('map', {
+				center: cen,
+				zoom: 14,
+				pitch: 56,
+				zoomControl: true, // add zoom control
+				baseLayer: new maptalks.TileLayer('base', {
+					urlTemplate: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+					subdomains: ['a', 'b', 'c', 'd'],
+					attribution: '&copy; <a href="http://osm.org">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/">CARTO</a>'
+				})
+			});
+		}
+
+		function moveMap(t) {
+			newCen = [t.coords.longitude, t.coords.latitude]
+			map.animateTo(
+				{
+					center: newCen,
+				},
+				{
+					duration: 1000
+				},
+				function (frame) {
+					if (frame.state.playState === 'finished') {
+						console.log('animation finished');
+					}
+				}
+			);
+		}
+		function rgbToHex(r, g, b) {
+			return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+		}
+
+		function addShapes() {
+			var vecLa = new maptalks.VectorLayer('vector2', { enableAltitude: true });
+			datas.forEach(t => {
+				//decide color here 
+
+				var circle = new maptalks.Circle([t.longitude, t.latitude], 50 * t.size, {
+					symbol: {
+						lineColor: '#34495e',
+						lineWidth: 2,
+						polygonFill: rgbToHex(t.temperature * prop, 0, 0),
+						polygonOpacity: 0.4
+					},
+					properties: {
+						altitude: t.elevation * spacer
+					}
+				});
+				vecLa.addGeometry(circle);
+			});
+			vecLa.addTo(map);
+		}
+
+		function loadData() {
+			fetch('http://localhost:8080/api/all', {
+				headers: {
+					// 'Content-Type': 'application/json'
+					'Content-Type': 'application/x-www-form-urlencoded',
+				},
+			})
+				.then(res => res.json())
+				.then(res => { datas = res })
+				.then(res => addShapes())
+				;
+		}
+
+		loadData();
+		initMap();
+		if (navigator.geolocation) {
+			navigator.geolocation.getCurrentPosition(t => {
+				moveMap(t);
+				// cen = [t.coords.latitude, t.coords.longitude]
+				// initMap();
+			});
+		}
+
+
+
+	</script>
+</body>
+
+</html>
