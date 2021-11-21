@@ -51,7 +51,7 @@ public class TemperatureDataManager {
             });
         });
         app.forEach(t -> {
-            if(System.currentTimeMillis() - lastRunTime >= 10 * 60) {
+            if(System.currentTimeMillis() - lastRunTime >= 10 * 60 * 1000) {
                 try {
                     String fooResourceUrl
                             = "http://api.openweathermap.org/data/2.5/weather?units=metric&" + "lat=" + t[1] + "&lon=" + t[0] + "&appid=" + key;
@@ -63,6 +63,7 @@ public class TemperatureDataManager {
                     TemperatureDataDTO tx = new TemperatureDataDTOImpl(40, temp, String.valueOf(t[1]), String.valueOf(t[0]), "0");
                     responses.putIfAbsent(t, tx);
                     rets.add(tx);
+                    lastRunTime = System.currentTimeMillis();
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
