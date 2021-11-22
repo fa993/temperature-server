@@ -66,7 +66,6 @@ void loop() {
     }
     time_t sec = mktime(&timeinfo);
     req.concat(sec);
-    req.concat("000");
     http.begin(req);
     int resCode = http.GET();
     Serial.println(req);

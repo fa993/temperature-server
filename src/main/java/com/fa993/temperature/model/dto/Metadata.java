@@ -1,8 +1,8 @@
 package com.fa993.temperature.model.dto;
 
-public interface TemperatureDataDTO {
+public interface Metadata {
 
-    public double getTemperature();
+    public String getMacAddress();
 
     public String getLatitude();
 
@@ -11,5 +11,4 @@ public interface TemperatureDataDTO {
     public String getElevation();
 
     public Integer getSize();
-
 }

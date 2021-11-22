@@ -1,7 +1,5 @@
 package com.fa993.temperature.model.entity;
 
-import com.fa993.temperature.model.dto.TemperatureDataDTO;
-
 import javax.persistence.*;
 
 @Entity

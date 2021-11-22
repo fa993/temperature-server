@@ -18,6 +18,8 @@
 </style>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maptalks/dist/maptalks.css">
 <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/maptalks/dist/maptalks.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 
 <body>
 
@@ -25,11 +27,71 @@
 
 	<script>
 
+		var labels = [
+			// 'January',
+			// 'February',
+			// 'March',
+			// 'April',
+			// 'May',
+			// 'June',
+		];
+
+		var ex = {
+			label: 'My First dataset',
+			backgroundColor: 'rgb(255, 99, 132)',
+			borderColor: 'rgb(255, 99, 132)',
+		};
+
+		var ambientDataset = [];
+
+		var averageDataset = [];
+
+		var ambientData = {
+			label: 'Ambient Temperature',
+			backgroundColor: 'rgb(99, 255, 132)',
+			borderColor: 'rgb(255, 99, 132)',
+			data: ambientDataset
+		};
+
+		var averagesData = {
+			label: 'Average Temperature',
+			borderColor: 'rgb(255, 99, 132)',
+			backgroundColor: 'rgb(255, 99, 132)',
+			data: averageDataset,
+		};
+
+		var data = {
+			labels: labels,
+			datasets: [
+				ambientData,
+				averagesData,
+			]
+		};
+
+
+
+		var config = {
+			type: 'bar',
+			data: data,
+			options: {
+				responsive: true,
+				plugins: {
+					legend: {
+						position: 'top',
+					},
+				}
+			},
+		};
+
 		cen = [-0.113049, 51.498568];
-		datas = []
+		allDatas = new Map();
+		allAmbients = new Map();
 		var spacer = 20;
 		var map;
+		var customPanel;
 		var prop = 5;
+		var myChart;
+		var vecLa;
 		function initMap() {
 			map = new maptalks.Map('map', {
 				center: cen,
@@ -42,6 +104,108 @@
 					attribution: '&copy; <a href="http://osm.org">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/">CARTO</a>'
 				})
 			});
+			customPanel = new maptalks.control.Panel({
+				'custom': 'true',
+				'content': '<div width="30%" height="20%">' +
+					'<canvas id = "myCanvas"> </canvas>' +
+					'</div>'
+			});
+
+
+			map.addControl(customPanel);
+
+			myChart = new Chart(document.getElementById('myCanvas'), config);
+
+			map.on("click", function (param) {
+				map.identify(
+					{
+						'coordinate': param.coordinate,
+						'layers': [vecLa]
+					},
+					function (geom) {
+						if (geom.length == 0) {
+							return;
+						}
+						var colNo = geom[0].getId();
+						updateChart(colNo)
+					}
+				)
+			})
+
+		}
+
+		function updateChart(colNo) {
+			var arr;
+			if(allDatas.has(colNo)) {
+				arr = allDatas.get(colNo);
+			} else {
+				return;
+			}
+			labels = [];
+			averageDataset = [];
+			ambientDataset = [];
+			console.log(allDatas);
+			console.log(allAmbients);
+			for (var i = 0; i < arr.length; i++) {
+				var ele = arr[i];
+				//first update labels
+				if (ele === undefined) {
+					continue;
+				}
+				dt = new Date(ele.time * 1000);
+				labels.push(dt.getUTCDate() + "/" + (dt.getUTCMonth() + 1));
+				averageDataset.push(ele.avgTemp);
+				ambientDataset.push(allAmbients.get(ele.latitude + "_" + ele.longitude)[i].avgTemp);
+			}
+			console.log(averageDataset);
+			var ambientData = {
+				label: 'Ambient Temperature',
+				backgroundColor: 'rgb(99, 255, 132)',
+				borderColor: 'rgb(255, 99, 132)',
+				data: ambientDataset,
+			};
+
+			var averagesData = {
+				label: 'Average Temperature',
+				borderColor: 'rgb(255, 99, 132)',
+				backgroundColor: 'rgb(255, 99, 132)',
+				data: averageDataset,
+			};
+
+			var data = {
+				labels: labels,
+				datasets: [
+					ambientData,
+					averagesData,
+				]
+			};
+
+			var config = {
+				type: 'bar',
+				data: data,
+				options: {
+					responsive: true,
+					plugins: {
+						legend: {
+							position: 'top',
+						},
+					}
+				},
+			};
+			myChart.destroy();
+			myChart = new Chart(document.getElementById('myCanvas'), config);
+		}
+
+		function startChart() {
+			myChart = new Chart(document.getElementById('myCanvas'), config);
+		}
+
+		function hideChart() {
+			customPanel.hide();
+		}
+
+		function showChart() {
+			customPanel.show();
 		}
 
 		function moveMap(t) {
@@ -51,7 +215,6 @@
 					center: newCen,
 				},
 				{
-					duration: 1000
 				},
 				function (frame) {
 					if (frame.state.playState === 'finished') {
@@ -65,38 +228,114 @@
 		}
 
 		function addShapes() {
-			var vecLa = new maptalks.VectorLayer('vector2', { enableAltitude: true });
-			datas.forEach(t => {
+			vecLa = new maptalks.VectorLayer('vector2', { enableAltitude: true });
+			for(var data of allAmbients.values()) {
+				renderMyShapes(data[0]);
+			}
+			for( var data of allDatas.values()) {
+			// allDatas.forEach(t => {
 				//decide color here 
+				renderMyShapes(data[0]);
+			};
+			vecLa.addTo(map);
+		}
 
+		function renderMyShapes(t) {
+			if(t === undefined || t == null) {
+				return;
+			}
+			tmp = (t.avgTemp - 20.0) / 20.0;
 				var circle = new maptalks.Circle([t.longitude, t.latitude], 50 * t.size, {
 					symbol: {
 						lineColor: '#34495e',
 						lineWidth: 2,
-						polygonFill: rgbToHex(t.temperature * prop, 0, 0),
+						polygonFill: getColorForPercentage(tmp),
 						polygonOpacity: 0.4
 					},
 					properties: {
-						altitude: t.elevation * spacer
+						altitude: t.elevation >= 0 ? t.elevation * spacer : 0
 					}
 				});
+				console.log(t);
+				var id = t.macAddress;
+				if(id === undefined || id == null) {
+					id = t.latitude + '_' + t.longitude;
+				}
+				circle.setId(id);
+				// console.log(mappings);
+				console.log(circle.getId())
 				vecLa.addGeometry(circle);
-			});
-			vecLa.addTo(map);
 		}
 
 		function loadData() {
-			fetch('http://localhost:8080/api/all', {
-				headers: {
-					// 'Content-Type': 'application/json'
-					'Content-Type': 'application/x-www-form-urlencoded',
-				},
-			})
-				.then(res => res.json())
-				.then(res => { datas = res })
-				.then(res => addShapes())
-				;
+			// fetch('http://localhost:8080/api/all/1')
+			// 	.then(res => res.json())
+			// 	.then(res => takeAmbients(res, 0))
+			// 	.then(res => {
+			// 		res.forEach(t => {
+			// 			if (!allDatas.has(t.macAddress)) {
+			// 				allDatas.set(t.macAddress, new Array(5));
+			// 			}
+			// 			allDatas.get(t.macAddress)[0] = t;
+			// 		})
+			// 		res.forEach(t => datas[t.macAddress] = t)
+			// 	})
+			// 	.then(res => addShapes())
+			// 	;
+			var c = 0;
+			var addDone = false;
+			for (var f = 1; f <= 5; f++) {
+				fetch('http://localhost:8080/api/all/' + f)
+					.then(res => res.json())
+					.then(res => filterAmbients(res, c))
+					.then(res => {
+						res.forEach(t => {
+							if (!allDatas.has(t.macAddress)) {
+								allDatas.set(t.macAddress, new Array(5));
+							}
+							allDatas.get(t.macAddress)[c] = t;
+							console.log(t)
+						});
+						c++;
+					}).then(res => {
+						if(!addDone) {
+							addShapes();
+							addDone = true;
+						}
+					});
+			}
+			console.log("Done");
 		}
+
+		function filterAmbients(array, index) {
+			return array.filter(f => {
+				if (f.elevation === "-1") {
+					//ambient
+					if (!allAmbients.has(f.latitude + "_" + f.longitude)) {
+						allAmbients.set(f.latitude + "_" + f.longitude, new Array(5));
+					}
+					allAmbients.get(f.latitude + "_" + f.longitude)[index] = f;
+					return false;
+				} else {
+					return true;
+				}
+			})
+		}
+
+		// function takeAmbients(array, index) {
+		// 	array.forEach(f => {
+		// 		if (f.elevation === "-1") {
+		// 			//ambient
+		// 			if (!allAmbients.has(f.latitude + "_" + f.longitude)) {
+		// 				allAmbients.set(f.latitude + "_" + f.longitude, new Array(5));
+		// 			}
+		// 			allAmbients.get(f.latitude + "_" + f.longitude)[index] = f;
+		// 		}
+		// 	});
+		// 	return array;
+		// }
+
+		
 
 		loadData();
 		initMap();
@@ -108,6 +347,31 @@
 			});
 		}
 
+		var percentColors = [
+			{ pct: 1.0, color: { r: 0xff, g: 0, b: 0x00 } },
+			{ pct: 0.5, color: { r: 0xff, g: 0, b: 0xff } },
+			{ pct: 0.0, color: { r: 0x00, g: 0, b: 0xff } }];
+
+		var getColorForPercentage = function (pct) {
+			for (var i = 1; i < percentColors.length - 1; i++) {
+				if (pct < percentColors[i].pct) {
+					break;
+				}
+			}
+			var lower = percentColors[i - 1];
+			var upper = percentColors[i];
+			var range = upper.pct - lower.pct;
+			var rangePct = (pct - lower.pct) / range;
+			var pctLower = 1 - rangePct;
+			var pctUpper = rangePct;
+			var color = {
+				r: Math.floor(lower.color.r * pctLower + upper.color.r * pctUpper),
+				g: Math.floor(lower.color.g * pctLower + upper.color.g * pctUpper),
+				b: Math.floor(lower.color.b * pctLower + upper.color.b * pctUpper)
+			};
+			return rgbToHex(color.r, color.g, color.b);
+			// return 'rgb(' + [color.r, color.g, color.b].join(',') + ')';
+		};
 
 
 	</script>
