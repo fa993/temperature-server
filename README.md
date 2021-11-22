@@ -12,11 +12,12 @@ Instructions for running:
 1. Clone this repository
 2. Setup local database using the given sql dump file at src/main/resources
 3. Fill in the correct user and password for mysql in application.properties
-4. Navigate into this project
-5. Run both the folllowing commands in the terminal
-6. Run command "mvn clean install"
-7. Run command "java -jar target/temperature-server-0.0.jar"
-8. Hit website at http://localhost:8080 to see the temperature map
+4. Also fill in the appropriate api key for the openweather API
+5. Navigate into this project
+6. Run both the folllowing commands in the terminal
+7. Run command "mvn clean install"
+8. Run command "java -jar target/temperature-server-0.0.jar"
+9. Hit website at http://localhost:8080 to see the temperature map
 
 Goals:
 
